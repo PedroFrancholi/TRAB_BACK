@@ -1,25 +1,43 @@
 const express = require("express");
 const router = express.Router();
 const bcrypt = require("bcrypt");
-const {saveUser} = require("../database/user");
+const {saveUser, findByEmail} = require("../database/user");
 
-router.post("/registerUser", async (req,res)=>{
-    
-    const hashedPassword = bcrypt.hashSync(req.body.password,10);
+router.post("/register", async (req,res)=>{ 
+    try{
+        const isEmailAlreadyUsed = await findByEmail(req.body.email);
+        if(isEmailAlreadyUsed) return res.status(400).json({
+            message: "Email already is being used"
+        })
+        
+        const hashedPassword = bcrypt.hashSync(req.body.password,10);
 
-    const user = {
-        name: req.body.name,
-        email: req.body.email,
-        password: hashedPassword,
+        const user = {
+            name: req.body.name,
+            email: req.body.email,
+            password: hashedPassword,
+        }
+        const savedUser = await saveUser(user);
+        delete savedUser.password;
+        res.status(201).json({
+            user: savedUser
+        })
+    } catch(error){
+        res.status(500).json({
+            message: "Server error"
+        })
     }
-    const savedUser = await saveUser(user);
-    delete savedUser.password;
-    res.status(201).json({
-        user: savedUser
-    })
 })
 
-//FAZER POST PARA O CADASTRO DE USERS
+router.post("/login", (req,res)=>{
+    const email = req.body.email;
+    const hashedPassword = bcrypt.hashSync(req.body.password,10);
+
+    res.json({
+        email,
+        hashedPassword,
+    })
+})
 
 module.exports = {
     router
